@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using TaskTrackerApp.Utils;
 
 namespace TaskTrackerApp
 {
@@ -16,22 +18,35 @@ namespace TaskTrackerApp
         public static string dirPath = Path.Combine(systemPath, "TaskTrackerApp");
         public static string filePath = Path.Combine(dirPath, "tasks.json");
 
-        static void Main(string[] args)
+        static async System.Threading.Tasks.Task Main(string[] args)
         {
             //Console.WriteLine("Dir path: " + dirPath);
             SetupConsole();
             LoadTasks();
 
-
             while (true)
             {
-                HandleCommands();
+                await HandleCommands();
 
                 if(exitFlag)
                 {
                     break;
                 }
             }
+        }
+        
+        static async System.Threading.Tasks.Task GenerateTasksAsync(int amount)
+        {
+            await System.Threading.Tasks.Task.Run(() => GenerateTasks());
+        }
+        public static void GenerateTasks()
+        {
+            for (int i = 0; i < 50; i++)
+            {
+                tasks.Add(new Task(0, "GeneratedTask"));
+            }
+            ResetTaskIds();
+            SaveTasks();
         }
 
         private static void LoadTasks()
@@ -263,7 +278,7 @@ namespace TaskTrackerApp
             }
         }
 
-        private static void HandleCommands()
+        private static async System.Threading.Tasks.Task HandleCommands()
         {
             Console.ForegroundColor = ConsoleColor.Blue;
             string command = Console.ReadLine();
@@ -326,6 +341,14 @@ namespace TaskTrackerApp
                     break;
                 case "mark to-do":
                     ChangeTaskState(Task.TaskState.ToDo);
+                    break;
+
+                case "generate":
+                    await GenerateTasksAsync(50);
+                    break;
+                case "clear":
+                    tasks.Clear();
+                    SaveTasks();
                     break;
 
                 case "help":
