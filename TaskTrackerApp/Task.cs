@@ -21,6 +21,7 @@ namespace TaskTrackerApp
             Done = 1,
             InProgress = 2,
             InDesign = 3,
+            ToDo = 4,
             None = 0,
         }
 
@@ -28,15 +29,18 @@ namespace TaskTrackerApp
         public DateTime createdAt;
         [JsonProperty("UpdateDate")]
         public DateTime updatedAt;
+        [JsonProperty("id")]
         public int id;
 
         public virtual void Print()
         {
+            Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Task: " + description + "\n" +
                 "State: " + State.ToString() + "\n" +
                 "Id: " + id + "\n" +
                 "Created at: " + createdAt + "\n" +
                 "Updated at: " + updatedAt + "\n");
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         public Task(int assignedId, string desc = "")

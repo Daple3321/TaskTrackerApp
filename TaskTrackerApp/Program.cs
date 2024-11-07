@@ -1,20 +1,26 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace TaskTrackerApp
 {
     class Program
     {
         public static List<Task> tasks = [];
-        public static int taskCount;
         public static bool exitFlag = false;
         public static JsonWriter writer;
-        public static string jsonTasks = "";
+
+        public static string systemPath = Environment.GetFolderPath(
+                Environment.SpecialFolder.CommonApplicationData
+                );
+        public static string dirPath = Path.Combine(systemPath, "TaskTrackerApp");
+        public static string filePath = Path.Combine(dirPath, "tasks.json");
 
         static void Main(string[] args)
         {
+            //Console.WriteLine("Dir path: " + dirPath);
             SetupConsole();
-            SetupJsonWriter();
-
+            LoadTasks();
 
 
             while (true)
@@ -28,131 +34,340 @@ namespace TaskTrackerApp
             }
         }
 
-        private static Dictionary<string, string> ParseArguments(string[] args)
-        {
-            var arguments= new Dictionary<string, string>();
-
-            foreach (var arg in args)
-            {
-                string[] parts = arg.Split('=');
-
-                if (parts.Length == 2)
-                {
-                    arguments[parts[0]] = parts[1];
-                }
-                else
-                {
-                    arguments[arg] = null;
-                }
-
-            }
-
-            return arguments;
-        }
-
-
         private static void LoadTasks()
         {
-            
-            JsonConvert.DeserializeObject(jsonTasks);
+            if (!Directory.Exists(dirPath)) // If directory doesn't exist
+            {
+                Console.WriteLine("New folder created at: " + dirPath);
+                Directory.CreateDirectory(dirPath);
+            }
+            if (!Path.Exists(filePath)) // If .json file doesn't exist
+            {
+                // Create a new json file
+                StreamWriter tasksFile = File.CreateText(filePath);
+                tasksFile.AutoFlush = true;
+                writer = new JsonTextWriter(tasksFile);
+                writer.Formatting = Formatting.Indented;
+
+                //writer.WriteStartObject();
+                writer.WriteStartArray();
+                //writer.WritePropertyName("Tasks");
+
+                writer.WriteEndArray();
+                writer.Close();
+
+            }
+            using (StreamReader r = new StreamReader(filePath))
+            {
+                string json = r.ReadToEnd();
+                tasks = JsonConvert.DeserializeObject<List<Task>>(json);
+            }
         }
 
         public static void CreateTask(string desc)
         {
-            int newTaskId = taskCount++;
-            Task newTask = new Task(newTaskId, desc);
+            Task newTask = new Task(0, desc);
             tasks.Add(newTask);
+            ResetTaskIds();
 
-            string serializedTask = JsonConvert.SerializeObject(newTask);
-            Console.WriteLine(serializedTask);
+            SaveTasks();
 
-            writer.WriteStartObject();
-
+            /*writer.WriteStartObject();
             writer.WritePropertyName("Description");
             writer.WriteValue(desc);
-
             writer.WritePropertyName("State");
             writer.WriteValue(Task.TaskState.InProgress);
-
             writer.WritePropertyName("CreateDate");
             writer.WriteValue(newTask.createdAt);
-
             writer.WritePropertyName("UpdateDate");
             writer.WriteValue(newTask.updatedAt);
-
             writer.WritePropertyName("id");
             writer.WriteValue(newTask.id);
+            writer.WriteEndObject();*/
 
-            writer.WriteEndObject();
+        }
 
-            taskCount++;
+        public static void ResetTaskIds()
+        {
+            for (int i = 0; i < tasks.Count; i++)
+            {
+                tasks[i].id = i;
+            }
+        }
+
+        public static void ChangeTaskState(Task.TaskState state)
+        {
+            int taskId = 0;
+            try
+            {
+                Console.Write("Task Id: ");
+                taskId = Convert.ToInt32(Console.ReadLine());
+                if (tasks.Exists(x=> x.id == taskId))
+                {
+                    tasks[taskId].State = state;
+                    tasks[taskId].updatedAt = DateTime.Now;
+                    SaveTasks();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("No task found with that id.");
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+            }
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Wrong ID input. Retry.");
+                Console.ForegroundColor = ConsoleColor.White;
+                ChangeTaskState(state);
+            }
+        } 
+
+        public static void UpdateTask()
+        {
+            int taskId = 0;
+            try
+            {
+                Console.Write("Task Id: ");
+                taskId = Convert.ToInt32(Console.ReadLine());
+                if (tasks.Exists(x => x.id == taskId))
+                {
+                    Console.Write("New description: ");
+                    string desc = Console.ReadLine();
+                    tasks[taskId].description = desc;
+                    tasks[taskId].updatedAt = DateTime.Now;
+                    SaveTasks();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("No task found with that id.");
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+            }
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Wrong ID input. Retry.");
+                Console.ForegroundColor = ConsoleColor.White;
+                UpdateTask();
+            }
         }
 
         public static void DeleteTask(int taskId)
         {
+            if (tasks.Exists(task => task.id == taskId))
+            {
+                tasks.RemoveAt(taskId);
+                ResetTaskIds();
 
+                string serializedTasks = JsonConvert.SerializeObject(tasks, Formatting.Indented);
+                File.WriteAllText(filePath, serializedTasks);
+            }
+            else
+            {
+                Console.WriteLine("No task found with id = " + taskId);
+                return;
+            }
         }
 
-        private static void HandleCommands()
+        public static void SaveTasks()
         {
-            string command = Console.ReadLine();
-            switch (command)
-            {
-                case "create":
-                    string descriptionToSet = Console.ReadLine();
-                    CreateTask(descriptionToSet);
-                    break;
+            string serializedTasks = JsonConvert.SerializeObject(tasks, Formatting.Indented);
+            //Console.WriteLine(serializedTasks);
+            File.WriteAllText(filePath, serializedTasks);
+        }
 
-                case "q":
-                    Console.WriteLine("Exiting...");
-                    writer.WriteEndArray();
-                    writer.WriteEndObject();
-                    writer.Close();
-                    exitFlag = true;
-                    break;
-                case "p":
-                    if(tasks != null)
+        public static void List(Task.TaskState state = 0)
+        {
+            switch (state)
+            {
+                case 0:
+                    if (tasks.Count > 0)
                     {
-                        foreach(Task task in tasks)
+                        foreach (Task task in tasks)
                         {
                             task.Print();
                         }
                     }
+                    else
+                    {
+                        Console.WriteLine("No tasks. Type 'create' to create a new task");
+                    }
+                break;
+                case Task.TaskState.Done:
+                    if (tasks.Exists(x=> x.State == Task.TaskState.Done))
+                    {
+                        foreach (Task task in tasks)
+                        {
+                            if(task.State == Task.TaskState.Done)
+                            {
+                                task.Print();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No DONE tasks found");
+                    }
+                break;
+                case Task.TaskState.InProgress:
+                    if (tasks.Exists(x => x.State == Task.TaskState.InProgress))
+                    {
+                        foreach (Task task in tasks)
+                        {
+                            if (task.State == Task.TaskState.InProgress)
+                            {
+                                task.Print();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No IN PROGRESS tasks found.");
+                    }
                     break;
+                case Task.TaskState.InDesign:
+                    if (tasks.Exists(x => x.State == Task.TaskState.InDesign))
+                    {
+                        foreach (Task task in tasks)
+                        {
+                            if (task.State == Task.TaskState.InDesign)
+                            {
+                                task.Print();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No IN DESIGN tasks found.");
+                    }
+                    break;
+                case Task.TaskState.ToDo:
+                    if (tasks.Exists(x => x.State == Task.TaskState.ToDo))
+                    {
+                        foreach (Task task in tasks)
+                        {
+                            if (task.State == Task.TaskState.ToDo)
+                            {
+                                task.Print();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No To-Do tasks found.");
+                    }
+                    break;
+            }
+        }
+
+        private static void HandleCommands()
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            string command = Console.ReadLine();
+            Console.ForegroundColor = ConsoleColor.White;
+            switch (command)
+            {
+                case "create":
+                    Console.Write("Description: ");
+                    string descriptionToSet = Console.ReadLine();
+                    CreateTask(descriptionToSet);
+                    break;
+                case "update":
+                    UpdateTask();
+                    break;
+                case "delete":
+                    Console.Write("Task id: ");
+                    try
+                    {
+                        int taskId = Convert.ToInt32(Console.ReadLine());
+                        DeleteTask(taskId);
+                    }
+                    catch
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Wrong input. Write id of the task you want to delete.");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    break;
+
+                case "q":
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Exiting...");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    exitFlag = true;
+                    break;
+                case "list":
+                    List();
+                    break;
+                case "list done":
+                    List(Task.TaskState.Done);
+                    break;
+                case "list in-progress":
+                    List(Task.TaskState.InProgress);
+                    break;
+                case "list in-design":
+                    List(Task.TaskState.InDesign);
+                    break;
+                case "list to-do":
+                    List(Task.TaskState.ToDo);
+                    break;
+
+                case "mark done":
+                    ChangeTaskState(Task.TaskState.Done);
+                    break;
+                case "mark in-progress":
+                    ChangeTaskState(Task.TaskState.InProgress);
+                    break;
+                case "mark in-design":
+                    ChangeTaskState(Task.TaskState.InDesign);
+                    break;
+                case "mark to-do":
+                    ChangeTaskState(Task.TaskState.ToDo);
+                    break;
+
                 case "help":
                     PrintHelp();
                     break;
 
 
                 default:
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Unknown command.");
-                break;
+                    Console.ForegroundColor = ConsoleColor.White;
+                    break;
             }
         }
 
         private static void PrintHelp()
         {
-            Console.WriteLine("p - print all tasks" + "\n" +
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("list - prints all tasks" + "\n" +
+                "list done - prints all done tasks" + "\n" +
+                "list in-progress - prints all in-progress tasks" + "\n" +
+                "list in-design - prints all in-design tasks" + "\n" +
+                "list to-do - prints all to-do tasks" + "\n\n" +
+
+                "mark done - marks task as done" + "\n" +
+                "mark in-progress - marks task as in-progress" + "\n" +
+                "mark in-design - marks task as in-design" + "\n" +
+                "mark to-do - marks task as to-do" + "\n\n" +
+
                 "create - create new task" + "\n" +
+                "delete - delete task with specified ID" + "\n" +
+                "update - changes task description" + "\n" +
+                "help - show this message" + "\n" +
                 "q - exit" + "\n");
-        }
-        
-        private static void SetupJsonWriter()
-        {
-            StreamWriter tasksFile = File.CreateText("tasks.json");
-            tasksFile.AutoFlush = true;
-            writer = new JsonTextWriter(tasksFile);
-            writer.Formatting = Formatting.Indented;
-            writer.WriteStartObject();
-            writer.WritePropertyName("Tasks");
-            writer.WriteStartArray();
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         private static void SetupConsole()
         {
             Console.Title = "TASK TRACKER";
-            Console.WindowHeight = 500;
-            Console.WindowWidth = 500;
+            //Console.WindowHeight = 500;
+            //Console.WindowWidth = 500;
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("---- TASK TRACKER APP ----");
             Console.BackgroundColor = ConsoleColor.Black;
