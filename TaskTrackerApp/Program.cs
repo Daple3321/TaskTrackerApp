@@ -1,16 +1,20 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
+using System.CommandLine;
 using SystemTask =  System.Threading.Tasks;
 using static TaskTrackerApp.Utils.Utils;
+using static TaskTrackerApp.TrackerOperations;
 
 namespace TaskTrackerApp
 {
     class Program
     {
         public static List<Task> tasks = [];
-        public static bool exitFlag = false;
         public static JsonWriter writer;
+        public static bool exitFlag = false;
 
         public static string systemPath = Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonApplicationData
@@ -20,11 +24,86 @@ namespace TaskTrackerApp
 
         static async SystemTask.Task Main(string[] args)
         {
-            //Console.WriteLine("Dir path: " + dirPath);
-            SetupConsole();
+            //SetupConsole();
             LoadTasks();
 
-            while (true)
+            var taskIdOption = new Option<int>("--id")
+            {
+                Description = "Task ID",
+                IsRequired = true,
+                Arity = ArgumentArity.ExactlyOne
+            };
+            taskIdOption.AddAlias("-id");
+
+            var nameOption = new Option<string[]>("--name")
+            {
+                Description = "Task name",
+                IsRequired = true,
+                AllowMultipleArgumentsPerToken = true
+            };
+            nameOption.AddAlias("-n");
+
+            var stateOption = new Option<Task.TaskState>("--state")
+            {
+                Description = "Task state",
+                IsRequired = false
+            };
+            stateOption.AddAlias("-s");
+
+            var createTask = new Command("create", "Creates a new task");
+            createTask.AddOption(nameOption);
+            createTask.AddAlias("c");
+            createTask.SetHandler(CreateTask, nameOption);
+
+            var deleteTask = new Command("delete", "Deletes task");
+            deleteTask.AddOption(taskIdOption);
+            deleteTask.AddAlias("del");
+            deleteTask.SetHandler(DeleteTask, taskIdOption);
+
+            var list = new Command("list", "Displays all tasks, you can filter tasks by state, use --state argument.");
+            list.AddOption(stateOption);
+            list.AddAlias("l");
+            list.SetHandler(List, stateOption);
+
+            var changeTask = new Command("change", "Changes the description of scpecified task");
+            changeTask.AddOption(taskIdOption);
+            changeTask.AddOption(nameOption);
+            changeTask.AddAlias("chng");
+            changeTask.SetHandler(UpdateTask, taskIdOption, nameOption);
+
+            var markTask = new Command("mark", "Changes the state of scpecified task");
+            markTask.AddOption(taskIdOption);
+            markTask.AddOption(stateOption);
+            markTask.AddAlias("m");
+            markTask.SetHandler(ChangeTaskState, taskIdOption, stateOption);
+
+            var clearTasks = new Command("clear", "Clears all tasks");
+            clearTasks.SetHandler(ClearTasks);
+
+            var dirCommand = new Command("directory", "Displays tasks.json directory");
+            dirCommand.AddAlias("dir");
+            dirCommand.SetHandler(() => Console.WriteLine("tasks.json directory: " + dirPath));
+
+            RootCommand rootCommand = new("Simple task tracker app");
+            rootCommand.AddCommand(createTask);
+            rootCommand.AddCommand(deleteTask);
+            rootCommand.Add(list);
+            rootCommand.Add(changeTask);
+            rootCommand.Add(markTask);
+            rootCommand.Add(clearTasks);
+            rootCommand.Add(dirCommand);
+            rootCommand.SetHandler(MainCommand);
+
+            var commandLineBuilder = new CommandLineBuilder(rootCommand);
+            commandLineBuilder.AddMiddleware(async (context, next) =>
+            {
+                await next(context);
+            });
+            commandLineBuilder.UseDefaults();
+            Parser parser = commandLineBuilder.Build();
+            await parser.InvokeAsync(args);
+
+            /*while (true)
             {
                 await HandleCommands();
 
@@ -32,12 +111,12 @@ namespace TaskTrackerApp
                 {
                     break;
                 }
-            }
+            }*/
         }
         
         static async SystemTask.Task GenerateTasksAsync(int amount)
         {
-            await System.Threading.Tasks.Task.Run(() => GenerateTasks());
+            await SystemTask.Task.Run(() => GenerateTasks());
         }
         public static void GenerateTasks()
         {
@@ -79,27 +158,19 @@ namespace TaskTrackerApp
             }
         }
 
-        public static void CreateTask(string desc = "")
+        public static void CreateTask(string[] desc)
         {
-            Task newTask = new Task(0, desc);
+            string joinedString = "";
+            foreach(string s in desc)
+            {
+                joinedString += " " + s;
+            }
+
+            Task newTask = new Task(0, joinedString);
             tasks.Add(newTask);
             ResetTaskIds();
 
             SaveTasks();
-
-            /*writer.WriteStartObject();
-            writer.WritePropertyName("Description");
-            writer.WriteValue(desc);
-            writer.WritePropertyName("State");
-            writer.WriteValue(Task.TaskState.InProgress);
-            writer.WritePropertyName("CreateDate");
-            writer.WriteValue(newTask.createdAt);
-            writer.WritePropertyName("UpdateDate");
-            writer.WriteValue(newTask.updatedAt);
-            writer.WritePropertyName("id");
-            writer.WriteValue(newTask.id);
-            writer.WriteEndObject();*/
-
         }
 
         public static void ResetTaskIds()
@@ -110,13 +181,12 @@ namespace TaskTrackerApp
             }
         }
 
-        public static void ChangeTaskState(Task.TaskState state)
+        public static void ChangeTaskState(int taskId, Task.TaskState state)
         {
-            int taskId = 0;
             try
             {
-                Console.Write("Task Id: ");
-                taskId = Convert.ToInt32(Console.ReadLine());
+                //Console.Write("Task Id: ");
+                //taskId = Convert.ToInt32(Console.ReadLine());
                 if (tasks.Exists(x=> x.id == taskId))
                 {
                     tasks[taskId].State = state;
@@ -131,22 +201,26 @@ namespace TaskTrackerApp
             catch
             {
                 PrintError("Wrong ID input. Retry.");
-                ChangeTaskState(state);
+                //ChangeTaskState(state);
             }
         } 
 
-        public static void UpdateTask()
+        public static void UpdateTask(int taskId, string[] desc)
         {
-            int taskId = 0;
+            string joinedString = "";
+            foreach (string s in desc)
+            {
+                joinedString += " " + s;
+            }
             try
             {
-                Console.Write("Task Id: ");
-                taskId = Convert.ToInt32(Console.ReadLine());
+                //Console.Write("Task Id: ");
+                //taskId = Convert.ToInt32(Console.ReadLine());
                 if (tasks.Exists(x => x.id == taskId))
                 {
-                    Console.Write("New description: ");
-                    var desc = Console.ReadLine();
-                    tasks[taskId].description = desc;
+                    //Console.Write("New description: ");
+                    //desc = Console.ReadLine();
+                    tasks[taskId].description = joinedString;
                     tasks[taskId].updatedAt = DateTime.Now;
                     SaveTasks();
                 }
@@ -158,7 +232,7 @@ namespace TaskTrackerApp
             catch
             {
                 PrintError("Wrong ID input. Retry.");
-                UpdateTask();
+                UpdateTask(taskId, desc);
             }
         }
 
@@ -270,6 +344,12 @@ namespace TaskTrackerApp
             }
         }
 
+        public static void ClearTasks()
+        {
+            tasks.Clear();
+            SaveTasks();
+        }
+
         private static async SystemTask.Task HandleCommands()
         {
             Console.ForegroundColor = ConsoleColor.Blue;
@@ -280,10 +360,10 @@ namespace TaskTrackerApp
                 case "create":
                     Console.Write("Description: ");
                     var descriptionToSet = Console.ReadLine();
-                    CreateTask(descriptionToSet);
+                    //CreateTask(descriptionToSet);
                     break;
                 case "update":
-                    UpdateTask();
+                    //UpdateTask();
                     break;
                 case "delete":
                     Console.Write("Task id: ");
@@ -318,7 +398,7 @@ namespace TaskTrackerApp
                     List(Task.TaskState.ToDo);
                     break;
 
-                case "mark done":
+                /*case "mark done":
                     ChangeTaskState(Task.TaskState.Done);
                     break;
                 case "mark in-progress":
@@ -329,7 +409,7 @@ namespace TaskTrackerApp
                     break;
                 case "mark to-do":
                     ChangeTaskState(Task.TaskState.ToDo);
-                    break;
+                    break;*/
 
                 case "generate":
                     await GenerateTasksAsync(50);
