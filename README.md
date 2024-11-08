@@ -5,9 +5,10 @@ Simple CLI task tracker.
 Saves all tasks into a .json file
 
 # :pushpin: Features:
-- Create/delete tasks
-- Display tasks based on state.  list -s [state]
-- Mark tasks as Done/InProgress/ToDo etc.
+- Create/delete tasks ``` tracker create -n "Task description" ```
+- Display tasks based on state. ``` tracker list -s [state] ```
+- Mark tasks as Done/InProgress/ToDo etc. ``` tracker m -id 0 -s [state] ```
+- Generate a lot of tasks. ``` tracker gen -num 50 ```
 
 # Installation:
 1. ``` git clone https://github.com/Daple3321/TaskTrackerApp ```
