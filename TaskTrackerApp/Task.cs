@@ -34,13 +34,40 @@ namespace TaskTrackerApp
 
         public virtual void Print()
         {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Task: ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write(description + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("State: ");
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Task: " + description + "\n" +
+            Console.Write(State + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Id: ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write(id + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Created at: ");
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(createdAt + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Updated at: ");
+
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(updatedAt + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("------------------------------" + "\n");
+
+            /*Console.WriteLine("Task: " + description + "\n" +
                 "State: " + State.ToString() + "\n" +
                 "Id: " + id + "\n" +
                 "Created at: " + createdAt + "\n" +
-                "Updated at: " + updatedAt + "\n");
-            Console.ForegroundColor = ConsoleColor.White;
+                "Updated at: " + updatedAt + "\n");*/
         }
 
         public Task(int assignedId, string desc = "")
