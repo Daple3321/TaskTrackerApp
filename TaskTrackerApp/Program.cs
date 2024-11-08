@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using TaskTrackerApp.Utils;
+using SystemTask =  System.Threading.Tasks;
+using static TaskTrackerApp.Utils.Utils;
 
 namespace TaskTrackerApp
 {
@@ -18,7 +18,7 @@ namespace TaskTrackerApp
         public static string dirPath = Path.Combine(systemPath, "TaskTrackerApp");
         public static string filePath = Path.Combine(dirPath, "tasks.json");
 
-        static async System.Threading.Tasks.Task Main(string[] args)
+        static async SystemTask.Task Main(string[] args)
         {
             //Console.WriteLine("Dir path: " + dirPath);
             SetupConsole();
@@ -35,7 +35,7 @@ namespace TaskTrackerApp
             }
         }
         
-        static async System.Threading.Tasks.Task GenerateTasksAsync(int amount)
+        static async SystemTask.Task GenerateTasksAsync(int amount)
         {
             await System.Threading.Tasks.Task.Run(() => GenerateTasks());
         }
@@ -79,7 +79,7 @@ namespace TaskTrackerApp
             }
         }
 
-        public static void CreateTask(string desc)
+        public static void CreateTask(string desc = "")
         {
             Task newTask = new Task(0, desc);
             tasks.Add(newTask);
@@ -125,16 +125,12 @@ namespace TaskTrackerApp
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("No task found with that id.");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    PrintError("No task found with that id.");
                 }
             }
             catch
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Wrong ID input. Retry.");
-                Console.ForegroundColor = ConsoleColor.White;
+                PrintError("Wrong ID input. Retry.");
                 ChangeTaskState(state);
             }
         } 
@@ -149,23 +145,19 @@ namespace TaskTrackerApp
                 if (tasks.Exists(x => x.id == taskId))
                 {
                     Console.Write("New description: ");
-                    string desc = Console.ReadLine();
+                    var desc = Console.ReadLine();
                     tasks[taskId].description = desc;
                     tasks[taskId].updatedAt = DateTime.Now;
                     SaveTasks();
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("No task found with that id.");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    PrintError("No task found with that id.");
                 }
             }
             catch
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Wrong ID input. Retry.");
-                Console.ForegroundColor = ConsoleColor.White;
+                PrintError("Wrong ID input. Retry.");
                 UpdateTask();
             }
         }
@@ -182,7 +174,7 @@ namespace TaskTrackerApp
             }
             else
             {
-                Console.WriteLine("No task found with id = " + taskId);
+                PrintError("No task found with id = " + taskId);
                 return;
             }
         }
@@ -278,16 +270,16 @@ namespace TaskTrackerApp
             }
         }
 
-        private static async System.Threading.Tasks.Task HandleCommands()
+        private static async SystemTask.Task HandleCommands()
         {
             Console.ForegroundColor = ConsoleColor.Blue;
-            string command = Console.ReadLine();
+            var command = Console.ReadLine();
             Console.ForegroundColor = ConsoleColor.White;
             switch (command)
             {
                 case "create":
                     Console.Write("Description: ");
-                    string descriptionToSet = Console.ReadLine();
+                    var descriptionToSet = Console.ReadLine();
                     CreateTask(descriptionToSet);
                     break;
                 case "update":
@@ -302,16 +294,12 @@ namespace TaskTrackerApp
                     }
                     catch
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Wrong input. Write id of the task you want to delete.");
-                        Console.ForegroundColor = ConsoleColor.White;
+                        PrintError("Wrong input. Write id of the task you want to delete.");
                     }
                     break;
 
                 case "q":
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Exiting...");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    PrintError("Exiting...");
                     exitFlag = true;
                     break;
                 case "list":
@@ -350,6 +338,9 @@ namespace TaskTrackerApp
                     tasks.Clear();
                     SaveTasks();
                     break;
+                case "dir":
+                    Console.WriteLine("tasks.json directory: " + dirPath);
+                    break;
 
                 case "help":
                     PrintHelp();
@@ -357,9 +348,7 @@ namespace TaskTrackerApp
 
 
                 default:
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Unknown command.");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    PrintError("Unknown command.");
                     break;
             }
         }

@@ -6,8 +6,13 @@ using System.Threading.Tasks;
 
 namespace TaskTrackerApp.Utils
 {
-    internal class Utils
+    internal static class Utils
     {
-        
+        public static void PrintError(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(message);
+            Console.ForegroundColor = ConsoleColor.White;
+        }
     }
 }
