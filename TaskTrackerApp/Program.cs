@@ -24,8 +24,15 @@ namespace TaskTrackerApp
 
         static async SystemTask.Task Main(string[] args)
         {
-            //SetupConsole();
             LoadTasks();
+
+            var numberOption = new Option<int>("--number")
+            {
+                Description = "Amount of",
+                IsRequired = true,
+                Arity = ArgumentArity.ExactlyOne
+            };
+            numberOption.AddAlias("-num");
 
             var taskIdOption = new Option<int>("--id")
             {
@@ -68,7 +75,7 @@ namespace TaskTrackerApp
             var changeTask = new Command("change", "Changes the description of scpecified task");
             changeTask.AddOption(taskIdOption);
             changeTask.AddOption(nameOption);
-            changeTask.AddAlias("chng");
+            changeTask.AddAlias("ch");
             changeTask.SetHandler(UpdateTask, taskIdOption, nameOption);
 
             var markTask = new Command("mark", "Changes the state of scpecified task");
@@ -84,14 +91,20 @@ namespace TaskTrackerApp
             dirCommand.AddAlias("dir");
             dirCommand.SetHandler(() => Console.WriteLine("tasks.json directory: " + dirPath));
 
+            var generateTasks = new Command("generate", "Generates a set amount of tasks");
+            generateTasks.AddAlias("gen");
+            generateTasks.AddOption(numberOption);
+            generateTasks.SetHandler(GenerateTasksAsync, numberOption);
+
             RootCommand rootCommand = new("Simple task tracker app");
             rootCommand.AddCommand(createTask);
             rootCommand.AddCommand(deleteTask);
-            rootCommand.Add(list);
-            rootCommand.Add(changeTask);
-            rootCommand.Add(markTask);
-            rootCommand.Add(clearTasks);
-            rootCommand.Add(dirCommand);
+            rootCommand.AddCommand(list);
+            rootCommand.AddCommand(changeTask);
+            rootCommand.AddCommand(markTask);
+            rootCommand.AddCommand(clearTasks);
+            rootCommand.AddCommand(dirCommand);
+            rootCommand.AddCommand(generateTasks);
             rootCommand.SetHandler(MainCommand);
 
             var commandLineBuilder = new CommandLineBuilder(rootCommand);
@@ -102,25 +115,15 @@ namespace TaskTrackerApp
             commandLineBuilder.UseDefaults();
             Parser parser = commandLineBuilder.Build();
             await parser.InvokeAsync(args);
-
-            /*while (true)
-            {
-                await HandleCommands();
-
-                if(exitFlag)
-                {
-                    break;
-                }
-            }*/
         }
         
         static async SystemTask.Task GenerateTasksAsync(int amount)
         {
-            await SystemTask.Task.Run(() => GenerateTasks());
+            await SystemTask.Task.Run(() => GenerateTasks(amount));
         }
-        public static void GenerateTasks()
+        public static void GenerateTasks(int amount)
         {
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < amount; i++)
             {
                 tasks.Add(new Task(0, "GeneratedTask"));
             }
@@ -350,7 +353,7 @@ namespace TaskTrackerApp
             SaveTasks();
         }
 
-        private static async SystemTask.Task HandleCommands()
+        /*private static async SystemTask.Task HandleCommands()
         {
             Console.ForegroundColor = ConsoleColor.Blue;
             var command = Console.ReadLine();
@@ -360,10 +363,10 @@ namespace TaskTrackerApp
                 case "create":
                     Console.Write("Description: ");
                     var descriptionToSet = Console.ReadLine();
-                    //CreateTask(descriptionToSet);
+                    CreateTask(descriptionToSet);
                     break;
                 case "update":
-                    //UpdateTask();
+                    UpdateTask();
                     break;
                 case "delete":
                     Console.Write("Task id: ");
@@ -398,7 +401,7 @@ namespace TaskTrackerApp
                     List(Task.TaskState.ToDo);
                     break;
 
-                /*case "mark done":
+                case "mark done":
                     ChangeTaskState(Task.TaskState.Done);
                     break;
                 case "mark in-progress":
@@ -409,7 +412,7 @@ namespace TaskTrackerApp
                     break;
                 case "mark to-do":
                     ChangeTaskState(Task.TaskState.ToDo);
-                    break;*/
+                    break;
 
                 case "generate":
                     await GenerateTasksAsync(50);
@@ -431,41 +434,6 @@ namespace TaskTrackerApp
                     PrintError("Unknown command.");
                     break;
             }
-        }
-
-        private static void PrintHelp()
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("list - prints all tasks" + "\n" +
-                "list done - prints all done tasks" + "\n" +
-                "list in-progress - prints all in-progress tasks" + "\n" +
-                "list in-design - prints all in-design tasks" + "\n" +
-                "list to-do - prints all to-do tasks" + "\n\n" +
-
-                "mark done - marks task as done" + "\n" +
-                "mark in-progress - marks task as in-progress" + "\n" +
-                "mark in-design - marks task as in-design" + "\n" +
-                "mark to-do - marks task as to-do" + "\n\n" +
-
-                "create - create new task" + "\n" +
-                "delete - delete task with specified ID" + "\n" +
-                "update - changes task description" + "\n" +
-                "help - show this message" + "\n" +
-                "q - exit" + "\n");
-            Console.ForegroundColor = ConsoleColor.White;
-        }
-
-        private static void SetupConsole()
-        {
-            Console.Title = "TASK TRACKER";
-            //Console.WindowHeight = 500;
-            //Console.WindowWidth = 500;
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("---- TASK TRACKER APP ----");
-            Console.BackgroundColor = ConsoleColor.Black;
-            Console.ForegroundColor = ConsoleColor.White;
-            PrintHelp();
-        }
+        }*/
     }
-
 }

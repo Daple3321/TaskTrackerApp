@@ -62,12 +62,6 @@ namespace TaskTrackerApp
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("------------------------------" + "\n");
-
-            /*Console.WriteLine("Task: " + description + "\n" +
-                "State: " + State.ToString() + "\n" +
-                "Id: " + id + "\n" +
-                "Created at: " + createdAt + "\n" +
-                "Updated at: " + updatedAt + "\n");*/
         }
 
         public Task(int assignedId, string desc = "")
