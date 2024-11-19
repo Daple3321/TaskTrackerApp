@@ -25,14 +25,18 @@ namespace TaskTrackerApp
             None = 0,
         }
 
-        [JsonProperty("CreateDate")]
+        [JsonProperty("createdAt")]
         public DateTime createdAt;
-        [JsonProperty("UpdateDate")]
+        [JsonProperty("updatedAt")]
         public DateTime updatedAt;
-        [JsonProperty("id")]
-        public int id;
 
-        public virtual void Print()
+        [JsonProperty("userId")]
+        public string userId { get; set; }
+
+        [JsonProperty("id")]
+        public int id { get; set; }
+
+        /*public virtual void Print()
         {
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("Task: ");
@@ -62,9 +66,9 @@ namespace TaskTrackerApp
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("------------------------------" + "\n");
-        }
+        }*/
 
-        public Task(int assignedId, string desc = "")
+        /*public Task(int assignedId, string desc = "")
         { 
             description = desc;
             State = TaskState.InProgress;
@@ -73,6 +77,6 @@ namespace TaskTrackerApp
             updatedAt = createdAt;
 
             id = assignedId;
-        }
+        }*/
     }
 }
