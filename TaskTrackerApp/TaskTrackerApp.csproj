@@ -9,7 +9,7 @@
     <ToolCommandName>tracker</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>2.2.4</Version>
+    <Version>2.3.6</Version>
   </PropertyGroup>
 
   <ItemGroup>

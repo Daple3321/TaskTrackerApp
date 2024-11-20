@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace TaskTrackerApp
 {
-    internal class Task
+    public class Task
     {
         [JsonProperty("Description")]
         public string description = "No Description.";

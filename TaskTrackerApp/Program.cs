@@ -10,7 +10,6 @@ using static TaskTrackerApp.TrackerOperations;
 using System.Net;
 using TaskTrackerApp.DTO;
 using System.Threading;
-using System.Xml.Linq;
 using System.Data;
 using System.Net.Http.Headers;
 using System.Net.Mime;
@@ -136,6 +135,14 @@ namespace TaskTrackerApp
             };
             nameOption.AddAlias("-n");
 
+            var changeNameOption = new Option<string[]>("--changeName")
+            {
+                Description = "Task name",
+                IsRequired = false,
+                AllowMultipleArgumentsPerToken = true
+            };
+            changeNameOption.AddAlias("-n");
+
             var stateOption = new Option<Task.TaskState>("--state")
             {
                 Description = "Task state",
@@ -203,15 +210,17 @@ namespace TaskTrackerApp
             deleteTask.SetHandler(DeleteTask, taskIdOption);
 
             var list = new Command("list", "Displays all tasks, you can filter tasks by state, use --state argument.");
-            list.AddOption(stateOption);
+            //list.AddOption(stateOption);
+            list.AddOption(tokenOption);
             list.AddAlias("l");
-            list.SetHandler(List, stateOption);
+            list.SetHandler(PrintTasks, tokenOption);
 
             var changeTask = new Command("change", "Changes the description of scpecified task");
             changeTask.AddOption(taskIdOption);
-            changeTask.AddOption(nameOption);
+            changeTask.AddOption(changeNameOption);
+            changeTask.AddOption(stateOption);
             changeTask.AddAlias("ch");
-            changeTask.SetHandler(UpdateTask, taskIdOption, nameOption);
+            changeTask.SetHandler(UpdateTask, taskIdOption, changeNameOption, stateOption);
 
             var markTask = new Command("mark", "Changes the state of scpecified task");
             markTask.AddOption(taskIdOption);
@@ -245,7 +254,7 @@ namespace TaskTrackerApp
             await parser.InvokeAsync(args);
         }
         
-        public static async Task<string> Register(string _email, string _password, string _role, CancellationToken token)
+        public static async SystemTask.Task Register(string _email, string _password, string _role, CancellationToken token)
         {
             RegisterDto form = new RegisterDto { email = _email, password = _password, role = _role };
 
@@ -266,14 +275,24 @@ namespace TaskTrackerApp
             {
                 if (e.StatusCode == HttpStatusCode.BadRequest)
                 {
-                    Console.WriteLine(e.Message + "\n" + e.Data + "\n" + e.InnerException);
+                    Console.WriteLine(e.Message);
                     cancellationTokenSrc.Cancel();
                 }
             }
-            token.ThrowIfCancellationRequested();
-
+            //token.ThrowIfCancellationRequested();
+            
             string jsonResponse = await response.Content.ReadAsStringAsync();
-            return jsonResponse;
+            //return jsonResponse;
+            if(response.StatusCode == HttpStatusCode.Created)
+            {
+                Console.WriteLine("New account created! " + response.StatusCode);
+                //return "New account created! " + response.StatusCode;
+            }
+            else
+            {
+                Console.WriteLine(response.StatusCode + "\n Couldn't create new account.");
+                //return response.StatusCode + "\n Couldn't create new account.";
+            }
         }
         
         public static async Task<LoginResponse> Login(string _email, string _password, DateTime _expire, CancellationToken token)
@@ -397,6 +416,48 @@ namespace TaskTrackerApp
             };
 
 
+            HttpResponseMessage response = new HttpResponseMessage
+            {
+                Content = new StringContent("", Encoding.UTF8, "application/json")
+            };
+            try
+            {
+                response = await sharedClient.SendAsync(request).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException e)
+            {
+                Console.WriteLine(e.Message);
+                cancellationTokenSrc.Cancel();
+            }
+            //token.ThrowIfCancellationRequested();
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            //Console.WriteLine(jsonResponse);
+            return jsonResponse;
+        }
+
+        public async static Task<string?> GetAllTasks(CancellationToken token)
+        {
+            LoadAuthData();
+            string uri = $"{apiUrl}/task/getAll";
+
+            ContentDto contentDto = new();
+            contentDto.content = currentUserId;
+            string jsonUserId = JsonConvert.SerializeObject(contentDto, Formatting.Indented);
+
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri(uri),
+                Content = new StringContent(
+                    jsonUserId,
+                    Encoding.UTF8,
+                    MediaTypeNames.Application.Json),
+            };
+
+
             HttpResponseMessage response = new();
             try
             {
@@ -405,14 +466,60 @@ namespace TaskTrackerApp
             }
             catch (HttpRequestException e)
             {
-                Console.WriteLine(e.Message + "\n" + e.Data + "\n" + e.InnerException);
+                Console.WriteLine(e.Message);
                 cancellationTokenSrc.Cancel();
             }
-            token.ThrowIfCancellationRequested();
+            //token.ThrowIfCancellationRequested();
 
             string jsonResponse = await response.Content.ReadAsStringAsync();
-            
+
+            //Console.WriteLine(jsonResponse);
             return jsonResponse;
+        }
+
+        public static async SystemTask.Task PrintTasks(CancellationToken token)
+        {
+            List<Task> tasks = new List<Task>();
+            string tasksJson = await GetAllTasks(token).ConfigureAwait(false);
+
+            tasks = JsonConvert.DeserializeObject<List<Task>>(tasksJson);
+
+            foreach(Task task in tasks)
+            {
+                PrintTask(task);
+            }
+        }
+
+        public static void PrintTask(Task t)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Task: ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write(t.description + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("State: ");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write(t.State + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Id: ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write(t.id + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Created at: ");
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(t.createdAt + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Updated at: ");
+
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(t.updatedAt + "\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("------------------------------" + "\n");
         }
 
         /*public static void ResetTaskIds()
@@ -447,52 +554,98 @@ namespace TaskTrackerApp
             }*/
         } 
 
-        public static void UpdateTask(int taskId, string[] desc)
+        public static async Task<string?> UpdateTask(int taskId, string[] desc, Task.TaskState state)
         {
-            /*string joinedString = "";
+            LoadAuthData();
+            string uri = $"{apiUrl}/task/update";
+
+            string joinedString = "";
             foreach (string s in desc)
             {
-                joinedString += " " + s;
+                joinedString += s + " ";
             }
+
+            UpdateTaskDto updatedTask = new();
+            updatedTask.userId = currentUserId;
+            updatedTask.Id = taskId;
+            updatedTask.newTask = new Task { 
+                userId = currentUserId, 
+                updatedAt = DateTime.Now, 
+                description = joinedString, 
+                State = state 
+            };
+            string updatedTaskJson = JsonConvert.SerializeObject(updatedTask, Formatting.Indented);
+
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Put,
+                RequestUri = new Uri(uri),
+                Content = new StringContent(
+                    updatedTaskJson,
+                    Encoding.UTF8,
+                    MediaTypeNames.Application.Json),
+            };
+
+
+            HttpResponseMessage response = new();
             try
             {
-                //Console.Write("Task Id: ");
-                //taskId = Convert.ToInt32(Console.ReadLine());
-                if (tasks.Exists(x => x.id == taskId))
-                {
-                    //Console.Write("New description: ");
-                    //desc = Console.ReadLine();
-                    tasks[taskId].description = joinedString;
-                    tasks[taskId].updatedAt = DateTime.Now;
-                    SaveTasks();
-                }
-                else
-                {
-                    PrintError("No task found with that id.");
-                }
+                response = await sharedClient.SendAsync(request).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
             }
-            catch
+            catch (HttpRequestException e)
             {
-                PrintError("Wrong ID input. Retry.");
-                UpdateTask(taskId, desc);
-            }*/
+                Console.WriteLine(e.Message);
+                cancellationTokenSrc.Cancel();
+            }
+            //token.ThrowIfCancellationRequested();
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(jsonResponse);
+            return jsonResponse;
         }
 
-        public static void DeleteTask(int taskId)
+        public static async Task<string?> DeleteTask(int taskId)
         {
-            /*if (tasks.Exists(task => task.id == taskId))
-            {
-                tasks.RemoveAt(taskId);
-                ResetTaskIds();
+            LoadAuthData();
+            string uri = $"{apiUrl}/task/delete";
 
-                string serializedTasks = JsonConvert.SerializeObject(tasks, Formatting.Indented);
-                File.WriteAllText(filePath, serializedTasks);
-            }
-            else
+            DeleteTaskDto deleteDto = new();
+            deleteDto.Id = taskId;
+            deleteDto.userId = currentUserId;
+            string jsonDeleteBody = JsonConvert.SerializeObject(deleteDto, Formatting.Indented);
+
+            var request = new HttpRequestMessage
             {
-                PrintError("No task found with id = " + taskId);
-                return;
-            }*/
+                Method = HttpMethod.Delete,
+                RequestUri = new Uri(uri),
+                Content = new StringContent(
+                    jsonDeleteBody,
+                    Encoding.UTF8,
+                    MediaTypeNames.Application.Json),
+            };
+
+            HttpResponseMessage response = new HttpResponseMessage
+            {
+                Content = new StringContent("", Encoding.UTF8, "application/json")
+            };
+            try
+            {
+                response = await sharedClient.SendAsync(request).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException e)
+            {
+                Console.WriteLine(e.Message);
+                cancellationTokenSrc.Cancel();
+            }
+            //token.ThrowIfCancellationRequested();
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(jsonResponse);
+            return jsonResponse;
         }
 
         /*public static void SaveTasks()
