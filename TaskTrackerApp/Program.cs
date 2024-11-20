@@ -24,7 +24,8 @@ namespace TaskTrackerApp
     class Program
     {
         public static bool exitFlag = false;
-        public static string apiUrl = "http://localhost:5133";
+        // Old url http://localhost:5133
+        public static string apiUrl = "http://192.168.0.10:5133";
         public static HttpClientHandler handler = new HttpClientHandler()
         {
             AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
